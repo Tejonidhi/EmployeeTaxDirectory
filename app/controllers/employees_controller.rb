@@ -1,5 +1,5 @@
 class EmployeesController < ApplicationController
-
+    # Endpoint to store employee details
     def create
       employee = Employee.new(employee_params)
       if employee.save
@@ -9,6 +9,7 @@ class EmployeesController < ApplicationController
       end
     end
   
+    # Endpoint to return employee tax deduction
     def tax_deduction
       employee = Employee.find_by(employee_id: params[:employee_id])
       
@@ -37,29 +38,40 @@ class EmployeesController < ApplicationController
       params.require(:employee).permit(:employee_id, :first_name, :last_name, :email, :doj, :salary, phone_numbers: [])
     end
   
+    # Method to calculate yearly salary considering DOJ
     def calculate_yearly_salary(employee)
       doj = employee.doj
       salary_per_month = employee.salary.to_f
-      financial_year_start = Date.new(Date.current.year - 1, 4, 1)
-      financial_year_end = Date.new(Date.current.year, 3, 31)
-  
-      # Only consider the period from DOJ to the end of the financial year
-      doj = [doj, financial_year_start].max # Start from DOJ or the beginning of the financial year, whichever is later
-  
-      # Calculate the number of complete months worked
-      complete_months_worked = (financial_year_end.year * 12 + financial_year_end.month) - (doj.year * 12 + doj.month) + (doj.day > 1 ? 0 : 1)
-  
-      # Calculate partial month days worked
-      partial_month_days_worked = doj.day > 1 ? (30 - doj.day + 1) : 0
-  
-      # Salary calculations
-      partial_month_salary = (salary_per_month / 30) * partial_month_days_worked
+      financial_year_start = Date.new(Date.current.year - 1, 4, 1) # Financial year starts on April 1st
+      financial_year_end = Date.new(Date.current.year, 3, 31) # Financial year ends on March 31st
+    
+      # Use the later of DOJ or the start of the financial year
+      doj = [doj, financial_year_start].max 
+    
+      # If DOJ is after April, exclude April completely
+      if doj > financial_year_start
+        complete_months_worked = (financial_year_end.year * 12 + financial_year_end.month) - (doj.year * 12 + doj.month)
+      else
+        complete_months_worked = 11 # April to March excluding DOJ month
+      end
+    
+      # Calculate partial month salary for the DOJ month if DOJ is not on the first day of the month
+      partial_month_salary = 0
+      if doj.day > 1
+        days_worked_in_doj_month = 30 - doj.day + 1 # Days worked in the month of joining
+        partial_month_salary = (salary_per_month / 30) * days_worked_in_doj_month
+      end
+    
+      # Total salary is the sum of complete months' salary and partial month's salary
       complete_months_salary = complete_months_worked * salary_per_month
-  
-      total_salary = partial_month_salary + complete_months_salary
+      total_salary = complete_months_salary + partial_month_salary
+    
       total_salary
     end
+      
+      
   
+    # Method to calculate tax based on slabs
     def calculate_tax(yearly_salary)
       tax = 0
       if yearly_salary > 250000
@@ -78,9 +90,12 @@ class EmployeesController < ApplicationController
       tax
     end
   
+    # Method to calculate cess
     def calculate_cess(yearly_salary)
       cess = 0
-      cess = (yearly_salary - 2500000) * 0.02 if yearly_salary > 2500000
+      if yearly_salary > 2500000
+        cess = (yearly_salary - 2500000) * 0.02 # Cess for the amount over 2500000
+      end
       cess
     end
   end

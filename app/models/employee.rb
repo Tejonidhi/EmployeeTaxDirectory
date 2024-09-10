@@ -8,7 +8,7 @@ class Employee < ApplicationRecord
   
   validates :employee_id, format: { with: /\A[A-Za-z]+\d+\z/, message: "must start with letters followed by numbers" }
 
-  serialize :phone_numbers, JSON
+  serialize :phone_numbers, coder: JSON
 
   validate :validate_phone_numbers
 
